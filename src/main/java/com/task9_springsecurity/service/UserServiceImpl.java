@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -54,29 +55,66 @@ public class UserServiceImpl implements UserService {
         validateUser(user);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-        // ambil roles dari DB
-        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
-            Set<Role> rolesFromDb = user.getRoles().stream()
-                    .map(r -> roleRepository.findById(r.getId())
-                            .orElseThrow(() -> new RuntimeException("Role not found: " + r.getId())))
-                    .collect(Collectors.toSet());
-            user.setRoles(rolesFromDb);
-        }
+        user.setRoles(fetchRolesFromDb(user.getRoles()));
 
         User saved = userRepository.save(user);
-        saved.getRoles().size(); // pastikan roles dimuat
+        saved.getRoles().size();
         return saved;
     }
 
-
-
     @Override
     @Transactional
-    public void update(User user) {
-        validateUser(user);
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        userRepository.save(user); // JPA save() bisa handle update juga
+    public User update(User user) {
+        System.out.println("==== UPDATE USER ====");
+        System.out.println("Payload diterima: " + user);
+
+        validateUser(user); // optional, validasi email/role/etc
+
+        // Ambil entity dari DB
+        User existing = userRepository.findById(user.getId())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        System.out.println("Password lama di DB: " + existing.getPassword());
+
+        // Update nama & email
+        existing.setFirstName(user.getFirstName());
+        existing.setLastName(user.getLastName());
+        existing.setEmail(user.getEmail());
+
+        // Update roles kalau ada
+        if (user.getRoles() != null && !user.getRoles().isEmpty()) {
+            existing.setRoles(fetchRolesFromDb(user.getRoles()));
+        }
+
+        // Update password hanya kalau ada isi non-whitespace
+        if (user.getPassword() != null && !user.getPassword().trim().isEmpty()) {
+            // Hanya encode kalau password **baru**, bukan yang sudah terenkripsi
+            if (!user.getPassword().startsWith("{bcrypt}")) {
+                existing.setPassword(passwordEncoder.encode(user.getPassword()));
+            } else {
+                existing.setPassword(user.getPassword());
+            }
+        }
+
+
+        userRepository.save(existing);
+        System.out.println("Password setelah save: " + existing.getPassword());
+        System.out.println("==== END UPDATE ====");
+        return existing;
     }
+
+
+    // ⬇️ Taruh helper method di sini
+    private Set<Role> fetchRolesFromDb(Set<Role> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return roles.stream()
+                .map(r -> roleRepository.findById(r.getId())
+                        .orElseThrow(() -> new RuntimeException("Role not found: " + r.getId())))
+                .collect(Collectors.toSet());
+    }
+
 
 
     @Override

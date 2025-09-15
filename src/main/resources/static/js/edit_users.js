@@ -18,9 +18,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 firstName: editFirstName.value,
                 lastName: editLastName.value,
                 email: editEmail.value,
-                password: editPassword.value,
-                roles: Array.from(editRoles.selectedOptions).map(opt => ({ id: Number(opt.value), name: opt.text }))
+                roles: Array.from(editRoles.selectedOptions).map(opt => ({id: Number(opt.value), name: opt.text}))
             };
+
+            if (editPassword.value && editPassword.value.trim() !== "") {
+                updatedUser.password = editPassword.value;
+            }
+
+            console.log("Payload dikirim ke server:", updatedUser);
 
             fetch(`/admin/api/${editId.value}`, {
                 method: "PUT",
@@ -31,14 +36,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 body: JSON.stringify(updatedUser)
             })
                 .then(res => {
+                    console.log("Response status:", res.status); // LOG di sini cukup
                     if (!res.ok) throw new Error("Update failed");
                     return res.json();
                 })
                 .then(() => {
                     alert("User updated successfully");
+                    editPassword.value = ""; // reset field password
                     window.location.href = "/admin"; // kembali ke list
                 })
                 .catch(err => alert(err.message));
         });
     }
-});
+}

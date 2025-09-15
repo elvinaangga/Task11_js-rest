@@ -56,18 +56,10 @@ public class AdminController {
     // =======================
     @PutMapping("/{id}")
     public User updateUser(@PathVariable Long id, @RequestBody User updatedUser) {
-        User existing = userService.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        existing.setFirstName(updatedUser.getFirstName());
-        existing.setLastName(updatedUser.getLastName());
-        existing.setEmail(updatedUser.getEmail());
-        existing.setPassword(updatedUser.getPassword());
-        existing.setRoles(updatedUser.getRoles());
-
-        userService.update(existing);
-        return existing;
+        updatedUser.setId(id); // pastikan id ter-set
+        return userService.update(updatedUser); // biar semua update dikelola service
     }
+
 
 
     // =======================
